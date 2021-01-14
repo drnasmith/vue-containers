@@ -1,0 +1,6 @@
+/* Using a variant of the tailwind/base reset */
+@import "tailwindcss/base";
+
+@import "tailwindcss/components";
+
+@import "tailwindcss/utilities";
