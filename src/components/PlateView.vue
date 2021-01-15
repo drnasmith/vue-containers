@@ -41,14 +41,26 @@ export default {
                 height: 60,
                 padding: 4, // Padding within each cell
                 margin: 10, // Spacing between wells in graphic
-                well: 2
             },
             graphic: null // Placeholder for main svg graphic area
         }
     },
     computed: {
+      // Made this a computed property to handle case where container.well is null or -1 => no drops used as well/buffer
+      // If an actual value provided then use that as the index
+      wellIndex: function() {
+          if (this.container.well == null) return -1
+          else return this.container.well
+      },
       dropsPerWell: function() {
-          return this.container.drops.x * this.container.drops.y
+          // Take into account any well/buffer location that is not a sample drop
+          // Assumption is only one 'drop' location is used as buffer
+          // So there will either be 1 or 0 locations we need to ignore
+          let wellDropCount = this.wellIndex < 0 ? 0 : 1
+
+          let dropsPerWell = (this.container.drops.x * this.container.drops.y) - wellDropCount
+
+          return  dropsPerWell
       },
       dropWidth: function() {
         return this.cell.width / this.container.drops.x
@@ -61,37 +73,24 @@ export default {
         // Will include an array of objects with x, y parameters
         let drops = []
         let dropIndex = 0;
-        for (let i = 0; i<this.container.drops.x; ++i) {
-            for (let j = 0; j<this.container.drops.y; ++j) {
-                // if (dropIndex == this.container.well) continue
-                console.log(dropIndex)
-                drops.push({x: this.cell.padding + this.dropWidth*i, y: this.cell.padding + this.dropHeight*j})
+
+        // Note we iterate over y direction first so drops read left-right, top-bottom
+        for (let j = 0; j<this.container.drops.y; ++j) {
+            for (let i = 0; i<this.container.drops.x; ++i) {
+                if (dropIndex != this.wellIndex) {
+                    drops.push({x: this.cell.padding + this.dropWidth*i, y: this.cell.padding + this.dropHeight*j})
+                }
                 dropIndex += 1
             }
         }
         return drops
       },
-      columns: function() {
-          return (this.container.capacity /  this.dropsPerWell) / this.container.rows
-      },
       columnLabels: function() {
-        let labels = Array.from({length: this.columns}, (v, i) => i + 1)
+        let labels = Array.from({length: this.container.columns}, (v, i) => i + 1)
         return labels
       },
       columnDomain: function() {
-        let labels = Array.from({length: this.columns}, (v, i) => i)
-        return labels
-      },
-      rowLabels: function() {
-        // Return the alphabet as an array of letters
-        let letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-        let labels = Array.from({length: letters.length}, (v, i) => letters.charAt(i))
-        return labels
-      },
-      rowDomain: function() {
-        // Return the alphabet as an array of letters
-        let letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-        let labels = Array.from({length: letters.length}, (v, i) => i)
+        let labels = Array.from({length: this.container.columns}, (v, i) => i)
         return labels
       },
       preparedData: function() {
@@ -116,7 +115,7 @@ export default {
 
         let chunked_rows = [];
         while (wells.length) {
-            chunked_rows.push(wells.splice(0, this.columns));
+            chunked_rows.push(wells.splice(0, this.container.columns));
         }
 
         return chunked_rows;
@@ -169,7 +168,12 @@ export default {
                 .text( function(d) { return d; })
 
         // Row labels scale - maps numbers to letters
-        let letterScale = d3.scaleOrdinal().domain(this.rowDomain).range(this.rowLabels)
+        let letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+
+        let rowDomain = Array.from({length: letters.length}, (v, i) => i)
+        let rowLabels = Array.from({length: letters.length}, (v, i) => letters.charAt(i))
+
+        let letterScale = d3.scaleOrdinal().domain(rowDomain).range(rowLabels)
 
         // Row labels e.g. A..H
         svg.append('g')

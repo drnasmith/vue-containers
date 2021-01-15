@@ -109,10 +109,15 @@ export default {
         plateKey: 0,
         puckKey: 0,
         container: {
-            capacity: 192,
-            rows: 8,
+            capacity: 96*2,
+            columns: 12, // wells per row
             drops: {x: 2, y: 1, h: 0.5, w: 1}, // Try x,y with a width factor
-            well: -1
+            well: null, // or -1 to indicate we don't need
+            // Example 3 drop plate with well
+            // capacity: 96*3,
+            // columns: 12,
+            // drops: {x: 2, y: 2, h: 1, w: 1}, // Try x,y with a width factor
+            // well: 1
         },
         threshold: 50, // Above number show as green (x10 for range slider)
         colorScale: 'rgb', // 'viridis', rgb', 'threshold'
