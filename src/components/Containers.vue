@@ -40,13 +40,22 @@
             <li class="inline" v-for="(i,k) in selectedItems" :key="k">{{i}}, </li>
         </ul>
 
-        <plate-view :container="container" :samples="samples.data" :threshold="threshold/100" :color-scale="colorScale" :key="plateKey"></plate-view>
-        <puck-view 
-            :samples="samples.data" 
-            :threshold="threshold/100" 
+        <plate-view
+            :container="container"
+            :samples="samples.data"
+            :threshold="threshold/100"
             :color-scale="colorScale"
             :selected="selectedItems"
-            @cell-clicked="onPuckCellClicked">
+            label="SCORE"
+            :key="plateKey"
+            @cell-clicked="onCellClicked">
+        </plate-view>
+        <puck-view 
+            :samples="samples.data"
+            :threshold="threshold/100"
+            :color-scale="colorScale"
+            :selected="selectedItems"
+            @cell-clicked="onCellClicked">
         </puck-view>
     </section>
 </template>
@@ -70,7 +79,7 @@ export default {
       onSave: function() {
           alert("Saving Sample Group: " + this.sampleGroupName)
       },
-      onPuckCellClicked: function(location) {
+      onCellClicked: function(location) {
           console.log("Puck Cell location clicked event " + JSON.stringify(location))
    
           let index = this.selectedItems.indexOf(location)
@@ -82,8 +91,8 @@ export default {
               console.log("Adding location " + location + " to selected array")
               this.selectedItems.push(+location)
           }
-          else this.selectedItems.splice(index, 1)        
-      }
+          else this.selectedItems.splice(index, 1)
+      },
   },
   watch: {
     threshold: function() {
@@ -103,7 +112,7 @@ export default {
             capacity: 192,
             rows: 8,
             drops: {x: 2, y: 1, h: 0.5, w: 1}, // Try x,y with a width factor
-            well: 2
+            well: -1
         },
         threshold: 50, // Above number show as green (x10 for range slider)
         colorScale: 'rgb', // 'viridis', rgb', 'threshold'

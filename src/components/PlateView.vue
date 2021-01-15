@@ -2,6 +2,9 @@
 <!--
 Component that renders a plate based on a passed geometry
 Tries to be as data agnostic as possible
+Plates are 2D grids of sample holders CrystalQuickX, Mitegen etc.
+A plate has a number of drops grouped together. Each drop location holds a sample.
+
 OnClickEvent will only fire if there is data bound to the element with a valid LOCATION property
 TODO - move the score colour methods to a utility class
 -->
@@ -19,7 +22,7 @@ export default {
     name: 'Plate-View',
     props: {
         'container': Object, // Plate geometry
-        'samples': Array, // Data bound to each cell / location
+        'samples': Array, // Data bound to each cell / drop location
         'selected': {
             type: Array, // list of locations that should be highlighted
             required: false
@@ -38,7 +41,9 @@ export default {
                 height: 60,
                 padding: 4, // Padding within each cell
                 margin: 10, // Spacing between wells in graphic
+                well: 2
             },
+            graphic: null // Placeholder for main svg graphic area
         }
     },
     computed: {
@@ -55,10 +60,13 @@ export default {
         // Build up coordinates for each drop based on the geometry
         // Will include an array of objects with x, y parameters
         let drops = []
-        
+        let dropIndex = 0;
         for (let i = 0; i<this.container.drops.x; ++i) {
             for (let j = 0; j<this.container.drops.y; ++j) {
+                // if (dropIndex == this.container.well) continue
+                console.log(dropIndex)
                 drops.push({x: this.cell.padding + this.dropWidth*i, y: this.cell.padding + this.dropHeight*j})
+                dropIndex += 1
             }
         }
         return drops
@@ -114,8 +122,18 @@ export default {
         return chunked_rows;
       }
     },
+    watch: {
+        selected: function(newVal) {
+            console.log("Selected prop has changed " + newVal)
+            this.updateSelected()
+        }
+    },
     mounted: function() {
         this.drawContainer()
+
+        this.updateLabels()
+
+        this.updateScores()
   },
   methods: {
       drawContainer: function() {
@@ -145,6 +163,7 @@ export default {
             .data(this.columnLabels)
             .enter()
             .append('text')
+                .attr('class', 'column-labels')
                 .attr('x', (d,i) => { return (this.cell.width+2*this.cell.padding+this.cell.margin)*i })
                 .style('fill', 'black')
                 .text( function(d) { return d; })
@@ -159,15 +178,15 @@ export default {
             .data(this.preparedData)
             .enter()
             .append('text')
+                .attr('class', 'row-labels')
                 .attr('y', (d,i) => { return (this.cell.height+2*this.cell.padding+this.cell.margin)*i })
                 .style('fill', 'black')
                 .text( function(d,i) { return letterScale(i); })
 
           // Chart area
-          const graphic = svg.append('g').attr('transform', `translate(${margin.left}, ${margin.top})`)
+          this.graphic = svg.append('g').attr('transform', `translate(${margin.left}, ${margin.top})`)
 
-          this.drawRows(graphic)
-
+          this.drawRows(this.graphic)
       },
       // The main plate gra
       drawRows: function(graphic) {
@@ -180,8 +199,8 @@ export default {
             .append('g')
                 .attr('class', 'container-row')
                 .attr('transform', (d,i) => { return 'translate(0,' + (this.cell.height+2*this.cell.padding+this.cell.margin)*i + ')'})
-          
-          rows.each(function(d, i) {
+
+            rows.each(function(d, i) {
                     d3.select(this).selectAll('.container-cell')
                     .data(d)
                     .enter()
@@ -208,7 +227,7 @@ export default {
             .style('fill','none')
             .style('fill-opacity','0.2')
 
-        // Draw the drops - grouped into a node 
+        // // Draw the drops - grouped into a node
         selection.append('g')
             .attr('class', 'drops')
             .each( function(d) {
@@ -221,32 +240,23 @@ export default {
                     .attr('y', (d,i) => { return self.dropCoords[i].y })
                     .attr('width', self.dropWidth*self.container.drops.w)
                     .attr('height', self.dropHeight*self.container.drops.h)
-                    // .style('fill', 'none')
+                    .style('fill', 'none')
                     .style('stroke', 'gray')
-                    .style('fill', (d) => { return self.scoreColors(d) })
+                    // .style('fill', (d) => { return self.scoreColors(d) })
                     .style("pointer-events","visible") // Required to capture mouse events on non-fill shapes
                     .on("click", function() {
-                        let sampleId = d3.select(this).data()[0].BLSAMPLEID
-                        if (sampleId === undefined) return
-
-                        let index = self.selected.indexOf(sampleId)
-
-                        if ( index < 0) {
-                            d3.select(this).style('stroke', 'steelblue').style('stroke-width', 2)
-                            self.selected.push(sampleId)
-                        } else {
-                            d3.select(this).style('stroke', 'gray').style('stroke-width', 1)
-                            self.selected.splice(index, 1)
-                        }
+                        let cellData = d3.select(this).data()[0]
+                        self.onCellClicked(cellData)
                     })
 
                 d3.select(this).selectAll('text')
                 .data(d)
                 .enter()
                 .append('text')
+                    .attr('class', 'cell-labels')
                     .attr('x', (d,i) => { return self.dropCoords[i].x + self.dropWidth*0.5*self.container.drops.w })
                     .attr('y', (d,i) => { return self.dropCoords[i].y + self.dropHeight*0.5*self.container.drops.h })
-                    .html((d) => { return d.SCORE ? d3.format(".1f")(d.SCORE) : ''})
+                    // .html((d) => { return d.SCORE ? d3.format(".1f")(d.SCORE) : ''})
                     .attr('text-anchor', 'middle')
                     .attr('dominant-baseline', 'middle')
                     .style('font-size', '10px')
@@ -255,6 +265,37 @@ export default {
                 
             })
       },
+      updateLabels: function() {
+          this.graphic.selectAll('.cell-labels').html((d,i) => { return this.getLabel(d,i) })
+      },
+      // Use the label prop if provided, else use location index
+      getLabel: function(d,index) {
+          if (!this.label) return index+1
+          else {
+              return d[this.label] || null
+          }
+      },
+      // Visualise the cells that are currently selected
+      updateSelected: function() {
+          // Iterate through selected list of locations..
+        this.graphic.selectAll('.drop')
+            .style('stroke', (d,i) => { return this.selected.indexOf(i+1) < 0 ? 'gray' : 'steelblue'} )
+            .style('stroke-width', (d,i) => { return this.selected.indexOf(i+1) < 0 ? 1 : 2} )
+      },
+
+      updateScores: function() {
+          this.graphic.selectAll('.drop')
+            .style('fill', (d) => { return this.scoreColors(d)} )
+      },
+      // This method has some knowledge of the sample data
+      // Used to inform the parent that a cell has been clicked
+      onCellClicked: function(sampleData) {
+        if (sampleData.LOCATION) {
+            // Convert to an actual index not string
+            this.$emit('cell-clicked', +sampleData.LOCATION)
+        }
+      },
+
       scoreColors: function(d) {
         let color = 'none'
         switch(this.colorScale) {
