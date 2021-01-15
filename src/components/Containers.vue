@@ -3,7 +3,7 @@
         <div class="mb-4">
             <h1 class="text-xl">Plate Geometry</h1>
             <label class="">Capacity</label>
-            <input v-model="container.capacity" class="border rounded shadow px-2" type="number"/>    
+            <input v-model="container.capacity" class="border rounded shadow px-2" type="number"/>
             <label>Rows</label>
             <input v-model="container.rows" class="border rounded shadow px-2" type="number"/>
         </div>
@@ -35,7 +35,7 @@
         </div>
 
         <p v-show="selectedItems.length">Selected Samples:</p>
-        
+
         <ul>
             <li class="inline" v-for="(i,k) in selectedItems" :key="k">{{i}}, </li>
         </ul>
@@ -50,7 +50,7 @@
             :key="plateKey"
             @cell-clicked="onCellClicked">
         </plate-view>
-        <puck-view 
+        <puck-view
             :samples="samples.data"
             :threshold="threshold/100"
             :color-scale="colorScale"
@@ -65,41 +65,41 @@ import PlateView from './PlateView'
 import PuckView from './PuckView'
 
 export default {
-    name:"Containers",
-    components: {
-        'plate-view': PlateView,
-        'puck-view': PuckView,
-    },
+  name:"Containers",
+  components: {
+    'plate-view': PlateView,
+    'puck-view': PuckView,
+  },
 
   methods: {
-      // Trick to rerender component if container geometry changes
-      updatePlateView: function() {
-          this.plateKey += 1;
-      },
-      onSave: function() {
-          alert("Saving Sample Group: " + this.sampleGroupName)
-      },
-      onCellClicked: function(location) {
-          console.log("Puck Cell location clicked event " + JSON.stringify(location))
-   
-          let index = this.selectedItems.indexOf(location)
+    // Trick to rerender component if container geometry changes
+    updatePlateView: function() {
+      this.plateKey += 1;
+    },
+    onSave: function() {
+      alert("Saving Sample Group: " + this.sampleGroupName)
+    },
+    onCellClicked: function(location) {
+        console.log("Puck Cell location clicked event " + JSON.stringify(location))
 
-          console.log(JSON.stringify(this.selectedItems))
-          console.log("Index for location " + location + " " + index)
+        let index = this.selectedItems.indexOf(location)
 
-          if ( index < 0) {
-              console.log("Adding location " + location + " to selected array")
-              this.selectedItems.push(+location)
-          }
-          else this.selectedItems.splice(index, 1)
-      },
+        console.log(JSON.stringify(this.selectedItems))
+        console.log("Index for location " + location + " " + index)
+
+        if ( index < 0) {
+          console.log("Adding location " + location + " to selected array")
+          this.selectedItems.push(+location)
+        }
+        else this.selectedItems.splice(index, 1)
+    },
   },
   watch: {
     threshold: function() {
-        this.updatePlateView()
+      this.updatePlateView()
     },
     colorScale: function() {
-      this.updatePlateView()  
+      this.updatePlateView()
      },
   },
   data: function() {
@@ -121,6 +121,7 @@ export default {
         },
         threshold: 50, // Above number show as green (x10 for range slider)
         colorScale: 'rgb', // 'viridis', rgb', 'threshold'
+        // Sample data taken from a json response
         samples: {
         "total": 20,
         "data": [
